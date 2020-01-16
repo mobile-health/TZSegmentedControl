@@ -1,6 +1,6 @@
 {
   "name": "TZSegmentedControl",
-  "version": "0.2.3",
+  "version": "1.0.1",
   "summary": "A scrollable segmented control view.",
   "description": "TODO: Add long description of the pod here.",
   "homepage": "https://github.com/tahseen0amin/TZSegmentedControl",
@@ -13,11 +13,13 @@
   },
   "source": {
     "git": "https://github.com/tahseen0amin/TZSegmentedControl.git",
-    "tag": "0.2.3"
+    "tag": "1.0.1"
   },
   "platforms": {
-    "ios": "8.0"
+    "ios": "10.0"
   },
+  "swift_versions": "5.0",
   "source_files": "TZSegmentedControl/Classes/**/*",
-  "frameworks": "UIKit"
+  "frameworks": "UIKit",
+  "swift_version": "5.0"
 }
