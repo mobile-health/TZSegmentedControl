@@ -90,9 +90,11 @@ open class TZSegmentedControl: UIControl {
     /// returned from this block.
     public var titleFormatter: TZTitleFormatterBlock? {
         didSet {
-            self.updateSegmentsRects()
-            self.setNeedsLayout()
-            self.setNeedsDisplay()
+            DispatchQueue.main.async { () -> Void in
+                self.updateSegmentsRects()
+                self.setNeedsLayout()
+                self.setNeedsDisplay()
+            }
         }
     }
     
