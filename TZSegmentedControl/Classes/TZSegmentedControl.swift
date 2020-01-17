@@ -149,7 +149,7 @@ open class TZSegmentedControl: UIControl {
     
     /// Specifies the style of the segment's width.
     /// Default is `fixed`
-    public var segmentWidthStyle: TZSegmentedControlSegmentWidthStyle = .dynamic {
+    public var segmentWidthStyle: TZSegmentedControlSegmentWidthStyle = .fixed {
         didSet {
             if self.segmentWidthStyle == .dynamic, self.type == .images {
                 self.segmentWidthStyle = .fixed
