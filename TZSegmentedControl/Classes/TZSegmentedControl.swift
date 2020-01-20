@@ -51,6 +51,17 @@ public enum TZSegmentedControlType {
     case text
     case images
     case textImages
+    case flexibleTextImages
+}
+
+public struct TextImage {
+    var text: String?
+    var image: UIImage?
+    
+    public init(text: String? = nil, image: UIImage? = nil) {
+        self.text = text
+        self.image = image
+    }
 }
 
 public let TZSegmentedControlNoSegment = -1
@@ -70,6 +81,16 @@ open class TZSegmentedControl: UIControl {
     }
     
     public var sectionImages: [UIImage]! {
+        didSet {
+            DispatchQueue.main.async { () -> Void in
+                self.updateSegmentsRects()
+                self.setNeedsLayout()
+                self.setNeedsDisplay()
+            }
+        }
+    }
+    
+    public var sectionItems: [TextImage]! {
         didSet {
             DispatchQueue.main.async { () -> Void in
                 self.updateSegmentsRects()
@@ -267,6 +288,20 @@ open class TZSegmentedControl: UIControl {
         self.postInitMethod()
     }
     
+    /// Initialiaze the segmented control with titles and images/icons (can missing title or image)
+    ///
+    /// - Parameter sectionTitles: array of strings for the section title
+    /// - Parameter sectionImages: array of images for the section images.
+    /// - Parameter selectedImages: array of images for the selected section images.
+    public convenience init(sectionTitleImages items: [TextImage]) {
+        self.init()
+        self.setup()
+        self.sectionItems = items
+        self.type = .flexibleTextImages
+        
+        self.postInitMethod()
+    }
+    
     open override func awakeFromNib() {
         self.setup()
         self.postInitMethod()
@@ -296,13 +331,28 @@ open class TZSegmentedControl: UIControl {
     // MARK: - Drawing
     
     private func measureTitleAtIndex(index: Int) -> CGSize {
-        if index >= self.sectionTitles.count {
+        var text: String?
+        if self.type == .flexibleTextImages {
+            if index >= self.sectionItems.count {
+                return CGSize.zero
+            }
+            text = self.sectionItems[index].text
+        } else {
+            if index >= self.sectionTitles.count {
+                return CGSize.zero
+            }
+            text = self.sectionTitles[index]
+        }
+        
+        guard let title = text else {
             return CGSize.zero
         }
-        let title = self.sectionTitles[index]
+        
         let selected = (index == self.selectedSegmentIndex)
         var size = CGSize.zero
-        if self.titleFormatter == nil {
+        if let titleFormatter = self.titleFormatter {
+            size = titleFormatter(self, title, index, selected).size()
+        } else {
             var attributes: [NSAttributedString.Key: Any]
             if selected {
                 attributes = self.finalSelectedTitleAttributes()
@@ -310,22 +360,34 @@ open class TZSegmentedControl: UIControl {
                 attributes = self.finalTitleAttributes()
             }
             size = (title as NSString).size(withAttributes: attributes)
-            
-        } else {
-            size = self.titleFormatter!(self, title, index, selected).size()
         }
         return size
     }
     
     private func attributedTitleAtIndex(index: Int) -> NSAttributedString {
-        let title = self.sectionTitles[index]
+        var text: String?
+        if self.type == .flexibleTextImages {
+            if index >= self.sectionItems.count {
+                return NSAttributedString()
+            }
+            text = self.sectionItems[index].text
+        } else {
+            if index >= self.sectionTitles.count {
+                return NSAttributedString()
+            }
+            text = self.sectionTitles[index]
+        }
+        guard let title = text else {
+            return NSAttributedString()
+        }
+        
         let selected = (index == self.selectedSegmentIndex)
         var str = NSAttributedString()
-        if self.titleFormatter == nil {
+        if let titleFormatter = self.titleFormatter {
+            str = titleFormatter(self, title, index, selected)
+        } else {
             let attr = selected ? self.finalSelectedTitleAttributes() : self.finalTitleAttributes()
             str = NSAttributedString(string: title, attributes: attr)
-        } else {
-            str = self.titleFormatter!(self, title, index, selected)
         }
         return str
     }
@@ -498,7 +560,71 @@ open class TZSegmentedControl: UIControl {
                 
                 self.addBgAndBorderLayer(with: imageRect)
             }
+        } else if self.type == .flexibleTextImages {
+            if self.sectionItems == nil {
+                return
+            }
+            
+            for (index, item) in self.sectionItems.enumerated() {
+                let imageWidth = item.image?.size.width ?? 0
+                let imageHeight = item.image?.size.height ?? 0
+                
+                let stringSize = self.measureTitleAtIndex(index: index)
+                let stringHeight = stringSize.height
+                let yOffset: CGFloat = CGFloat(roundf(Float(
+                    ((self.frame.height - self.selectionIndicatorHeight) / 2) - (stringHeight / 2)
+                )))
+                
+                var imagexOffset: CGFloat = self.edgeInset.left
+                let padding: CGFloat = 8.0
+                var textWidth: CGFloat = stringSize.width
+                if self.segmentWidthStyle == .fixed {
+                    imagexOffset = self.segmentWidth * CGFloat(index) + self.segmentWidth / 2 - (imageWidth + textWidth + padding) / 2
+                } else {
+                    // When we are drawing dynamic widths, we need to loop the widths array to calculate the xOffset
+                    let a = self.getDynamicWidthTillSegmentIndex(index: index)
+                    imagexOffset = a.0 + self.segmentWidthsArray[index] / 2 - (imageWidth + textWidth + padding) / 2
+                }
+                
+                var textxOffset: CGFloat = imagexOffset + padding + imageWidth
+                
+                let imageyOffset: CGFloat = CGFloat(roundf(Float(
+                    ((self.frame.height - self.selectionIndicatorHeight) / 2) - imageHeight / 2)))
+                
+                let imageRect = CGRect(x: imagexOffset, y: imageyOffset, width: imageWidth, height: imageHeight)
+                var textRect = CGRect(x: textxOffset, y: yOffset, width: textWidth, height: stringHeight)
+                
+                // Fix rect position/size to avoid blurry labels
+                textRect = CGRect(x: ceil(textRect.origin.x), y: ceil(textRect.origin.y), width: ceil(textRect.size.width), height: ceil(textRect.size.height))
+                
+                let titleLayer = CATextLayer()
+                titleLayer.frame = textRect
+                titleLayer.alignmentMode = CATextLayerAlignmentMode.center
+                if (UIDevice.current.systemVersion as NSString).floatValue < 10.0 {
+                    titleLayer.truncationMode = CATextLayerTruncationMode.end
+                }
+                titleLayer.string = self.attributedTitleAtIndex(index: index)
+                titleLayer.contentsScale = UIScreen.main.scale
+                
+                if let image = item.image {
+                    let imageLayer = CALayer()
+                    imageLayer.frame = imageRect
+                    imageLayer.contents = image.cgImage
+                    
+                    if self.selectedSegmentIndex == index, self.sectionItems.count > index {
+                        if let highlightedImage = self.sectionItems[index].image {
+                            imageLayer.contents = highlightedImage.cgImage
+                        }
+                    }
+                    
+                    self.scrollView.layer.addSublayer(imageLayer)
+                }
+                
+                self.scrollView.layer.addSublayer(titleLayer)
+                self.addBgAndBorderLayer(with: imageRect)
+            }
         }
+        
         // Add the selection indicators
         if self.selectedSegmentIndex != TZSegmentedControlNoSegment {
             if self.selectionStyle == .arrow {
@@ -771,6 +897,23 @@ open class TZSegmentedControl: UIControl {
                 }
                 self.segmentWidthsArray = arr
             }
+        } else if self.type == .flexibleTextImages {
+            if self.segmentWidthStyle == .fixed {
+                for (index, _) in self.sectionItems.enumerated() {
+                    let stringWidth = self.measureTitleAtIndex(index: index).width +
+                        self.edgeInset.left + self.edgeInset.right
+                    self.segmentWidth = max(stringWidth, self.segmentWidth)
+                }
+            } else if self.segmentWidthStyle == .dynamic {
+                var arr = [CGFloat]()
+                for (index, _) in self.sectionItems.enumerated() {
+                    let stringWidth = self.measureTitleAtIndex(index: index).width +
+                        self.edgeInset.right
+                    let imageWidth = self.sectionItems[index].image?.size.width ?? 0 + self.edgeInset.left
+                    arr.append(max(stringWidth, imageWidth))
+                }
+                self.segmentWidthsArray = arr
+            }
         }
         
         DispatchQueue.main.async { () -> Void in
@@ -802,6 +945,8 @@ open class TZSegmentedControl: UIControl {
     private func sectionCount() -> Int {
         if self.type == .text {
             return self.sectionTitles.count
+        } else if self.type == .flexibleTextImages {
+            return self.sectionItems.count
         } else {
             return self.sectionImages.count
         }
@@ -828,6 +973,10 @@ open class TZSegmentedControl: UIControl {
         
         if self.sectionImages != nil {
             sectionImagesCount = self.sectionImages.count
+        }
+        
+        if self.sectionItems != nil {
+            sectionImagesCount = self.sectionItems.count
         }
         
         if sectionTitleCount == 0, sectionImagesCount == 0 {
@@ -860,6 +1009,8 @@ open class TZSegmentedControl: UIControl {
             var sectionsCount = 0
             if self.type == .images {
                 sectionsCount = self.sectionImages.count
+            } else if self.type == .flexibleTextImages {
+                sectionsCount = self.sectionItems.count
             } else {
                 sectionsCount = self.sectionTitles.count
             }
@@ -874,15 +1025,19 @@ open class TZSegmentedControl: UIControl {
     // MARK: - Scrolling
     
     private func totalSegmentedControlWidth() -> CGFloat {
-        if self.type != .images {
-            if self.segmentWidthStyle == .fixed {
-                return CGFloat(self.sectionTitles.count) * self.segmentWidth
-            } else {
-                let sum = self.segmentWidthsArray.reduce(0,+)
-                return sum
-            }
-        } else {
+        if self.type == .images {
             return CGFloat(self.sectionImages.count) * self.segmentWidth
+        }
+        
+        if self.type == .flexibleTextImages {
+            return CGFloat(self.sectionItems.count) * self.segmentWidth
+        }
+        
+        if self.segmentWidthStyle == .fixed {
+            return CGFloat(self.sectionTitles.count) * self.segmentWidth
+        } else {
+            let sum = self.segmentWidthsArray.reduce(0,+)
+            return sum
         }
     }
     
