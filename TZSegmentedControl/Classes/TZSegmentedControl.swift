@@ -57,10 +57,12 @@ public enum TZSegmentedControlType {
 public struct TextImage {
     var text: String?
     var image: UIImage?
+    var badge: String?
 
-    public init(text: String? = nil, image: UIImage? = nil) {
+    public init(text: String? = nil, image: UIImage? = nil, badge: String? = nil) {
         self.text = text
         self.image = image
+        self.badge = badge
     }
 }
 
@@ -126,9 +128,15 @@ open class TZSegmentedControl: UIControl {
     /// Attributes not set in this dictionary are inherited from `titleTextAttributes`.
     public var selectedTitleTextAttributes: [NSAttributedString.Key: Any]?
 
+    /// Text attributes to apply to badge text
+    public var badgeTextAttributes: [NSAttributedString.Key: Any]? = [NSAttributedString.Key.font: UIFont.systemFont(ofSize: 12), NSAttributedString.Key.foregroundColor: UIColor.white]
+
+    /// Background color to apply to badge text
+    public var badgeBackgroundColor = UIColor.black
+
     /// Segmented control background color.
     /// Default is `[UIColor whiteColor]`
-    open dynamic override var backgroundColor: UIColor! {
+    override open dynamic var backgroundColor: UIColor! {
         set {
             TZSegmentedControl.appearance().backgroundColor = newValue
         }
@@ -276,7 +284,8 @@ open class TZSegmentedControl: UIControl {
     /// - Parameter sectionImages: array of images for the section images.
     /// - Parameter selectedImages: array of images for the selected section images.
     public convenience init(sectionTitles titles: [String], sectionImages images: [UIImage],
-                            selectedImages sImages: [UIImage]) {
+                            selectedImages sImages: [UIImage])
+    {
         self.init()
         setup()
         sectionTitles = titles
@@ -302,7 +311,7 @@ open class TZSegmentedControl: UIControl {
         postInitMethod()
     }
 
-    open override func awakeFromNib() {
+    override open func awakeFromNib() {
         setup()
         postInitMethod()
     }
@@ -318,7 +327,7 @@ open class TZSegmentedControl: UIControl {
 
     // MARK: - View LifeCycle
 
-    open override func willMove(toSuperview newSuperview: UIView?) {
+    override open func willMove(toSuperview newSuperview: UIView?) {
         if newSuperview == nil {
             // Control is being removed
             return
@@ -392,7 +401,7 @@ open class TZSegmentedControl: UIControl {
         return str
     }
 
-    open override func draw(_ rect: CGRect) {
+    override open func draw(_ rect: CGRect) {
         backgroundColor.setFill()
         UIRectFill(bounds)
 
@@ -423,11 +432,11 @@ open class TZSegmentedControl: UIControl {
 
                 let a: CGFloat = (frame.height - (isBoxStyle * selectionIndicatorHeight)) / 2
                 let b: CGFloat = (strHeight / 2) + (selectionIndicatorHeight * isLocationUp)
-                let yPosition: CGFloat = CGFloat(roundf(Float(a - b)))
+                let yPosition = CGFloat(roundf(Float(a - b)))
 
                 var newRect = CGRect.zero
                 if segmentWidthStyle == .fixed {
-                    let xPosition: CGFloat = CGFloat((segmentWidth * CGFloat(index)) + (segmentWidth - strWidth) / 2)
+                    let xPosition = CGFloat((segmentWidth * CGFloat(index)) + (segmentWidth - strWidth) / 2)
                     newRect = CGRect(x: xPosition,
                                      y: yPosition,
                                      width: strWidth,
@@ -480,7 +489,7 @@ open class TZSegmentedControl: UIControl {
 
                 let a = (frame.height - selectionIndicatorHeight) / 2
                 let b = (imageHeight / 2) + (selectionIndicatorLocation == .up ? selectionIndicatorHeight : 0.0)
-                let y: CGFloat = CGFloat(roundf(Float(a - b)))
+                let y = CGFloat(roundf(Float(a - b)))
                 let x: CGFloat = (segmentWidth * CGFloat(index)) + (segmentWidth - imageWidth) / 2.0
                 let newRect = CGRect(x: x, y: y, width: imageWidth, height: imageHeight)
 
@@ -509,7 +518,7 @@ open class TZSegmentedControl: UIControl {
                 let imageHeight = image.size.height
 
                 let stringHeight = measureTitleAtIndex(index: index).height
-                let yOffset: CGFloat = CGFloat(roundf(Float(
+                let yOffset = CGFloat(roundf(Float(
                     ((frame.height - selectionIndicatorHeight) / 2) - (stringHeight / 2)
                 )))
 
@@ -529,7 +538,7 @@ open class TZSegmentedControl: UIControl {
                     textWidth = segmentWidthsArray[index]
                 }
 
-                let imageyOffset: CGFloat = CGFloat(roundf(Float(
+                let imageyOffset = CGFloat(roundf(Float(
                     ((frame.height - selectionIndicatorHeight) / 2) + 8.0)))
 
                 let imageRect = CGRect(x: imagexOffset, y: imageyOffset, width: imageWidth, height: imageHeight)
@@ -571,7 +580,7 @@ open class TZSegmentedControl: UIControl {
 
                 let stringSize = measureTitleAtIndex(index: index)
                 let stringHeight = stringSize.height
-                let yOffset: CGFloat = CGFloat(roundf(Float(
+                let yOffset = CGFloat(roundf(Float(
                     ((frame.height - selectionIndicatorHeight) / 2) - (stringHeight / 2)
                 )))
 
@@ -587,12 +596,14 @@ open class TZSegmentedControl: UIControl {
                 }
 
                 var textxOffset: CGFloat = imagexOffset + padding + imageWidth
+                var badgexOffset: CGFloat = imagexOffset + padding + imageWidth + padding + textWidth
 
-                let imageyOffset: CGFloat = CGFloat(roundf(Float(
+                let imageyOffset = CGFloat(roundf(Float(
                     ((frame.height - selectionIndicatorHeight) / 2) - imageHeight / 2)))
 
                 let imageRect = CGRect(x: imagexOffset, y: imageyOffset, width: imageWidth, height: imageHeight)
                 var textRect = CGRect(x: textxOffset, y: yOffset, width: textWidth, height: stringHeight)
+                let badgeRect = CGRect(x: badgexOffset, y: yOffset, width: stringHeight, height: stringHeight)
 
                 // Fix rect position/size to avoid blurry labels
                 textRect = CGRect(x: ceil(textRect.origin.x), y: ceil(textRect.origin.y), width: ceil(textRect.size.width), height: ceil(textRect.size.height))
@@ -612,12 +623,24 @@ open class TZSegmentedControl: UIControl {
                     imageLayer.contents = image.cgImage
 
                     if selectedSegmentIndex == index, sectionItems.count > index {
-                        if let highlightedImage = self.sectionItems[index].image {
+                        if let highlightedImage = sectionItems[index].image {
                             imageLayer.contents = highlightedImage.cgImage
                         }
                     }
 
                     scrollView.layer.addSublayer(imageLayer)
+                }
+
+                if let badge = item.badge {
+                    let badgeLayer = CenteredVeritcalCATextLayer()
+                    badgeLayer.frame = badgeRect
+                    badgeLayer.string = NSAttributedString(string: badge, attributes: badgeTextAttributes)
+                    badgeLayer.cornerRadius = stringHeight / 2
+                    badgeLayer.backgroundColor = badgeBackgroundColor.cgColor
+                    badgeLayer.alignmentMode = .center
+                    badgeLayer.contentsScale = UIScreen.main.scale
+
+                    scrollView.layer.addSublayer(badgeLayer)
                 }
 
                 scrollView.layer.addSublayer(titleLayer)
@@ -749,10 +772,10 @@ open class TZSegmentedControl: UIControl {
         if type == .text {
             sectionWidth = measureTitleAtIndex(index: selectedSegmentIndex).width
         } else if type == .images {
-            sectionWidth = sectionImages[self.selectedSegmentIndex].size.width
+            sectionWidth = sectionImages[selectedSegmentIndex].size.width
         } else if type == .textImages {
             let stringWidth = measureTitleAtIndex(index: selectedSegmentIndex).width
-            let imageWidth = sectionImages[self.selectedSegmentIndex].size.width
+            let imageWidth = sectionImages[selectedSegmentIndex].size.width
             sectionWidth = max(stringWidth, imageWidth)
         }
 
@@ -773,8 +796,9 @@ open class TZSegmentedControl: UIControl {
             indicatorFrame = CGRect(x: xPos, y: indicatorYOffset, width: selectionIndicatorHeight * 2, height: selectionIndicatorHeight)
         } else {
             if selectionStyle == .textWidth, sectionWidth <= segmentWidth,
-                segmentWidthStyle != .dynamic {
-                let widthToStartOfSelIndex: CGFloat = CGFloat(selectedSegmentIndex) * segmentWidth
+               segmentWidthStyle != .dynamic
+            {
+                let widthToStartOfSelIndex = CGFloat(selectedSegmentIndex) * segmentWidth
                 let widthToEndOfSelIndex: CGFloat = widthToStartOfSelIndex + segmentWidth
 
                 var xPos = (widthToStartOfSelIndex - (sectionWidth / 2)) + ((widthToEndOfSelIndex - widthToStartOfSelIndex) / 2)
@@ -793,7 +817,7 @@ open class TZSegmentedControl: UIControl {
                     }
                     indicatorFrame = CGRect(x: selectedSegmentOffset + edgeInset.left,
                                             y: indicatorYOffset,
-                                            width: segmentWidthsArray[self.selectedSegmentIndex] - edgeInset.right - edgeInset.left,
+                                            width: segmentWidthsArray[selectedSegmentIndex] - edgeInset.right - edgeInset.left,
                                             height: selectionIndicatorHeight + edgeInset.bottom)
                 } else {
                     let xPos = (segmentWidth * CGFloat(selectedSegmentIndex)) + edgeInset.left
@@ -841,7 +865,7 @@ open class TZSegmentedControl: UIControl {
                 i += 1
             }
 
-            return CGRect(x: selectedSegmentOffset, y: 0, width: segmentWidthsArray[self.selectedSegmentIndex], height: frame.height)
+            return CGRect(x: selectedSegmentOffset, y: 0, width: segmentWidthsArray[selectedSegmentIndex], height: frame.height)
         }
         return CGRect(x: segmentWidth * CGFloat(selectedSegmentIndex), y: 0, width: segmentWidth, height: frame.height)
     }
@@ -921,8 +945,7 @@ open class TZSegmentedControl: UIControl {
             scrollView.contentInset = UIEdgeInsets(top: 0,
                                                    left: scrollView.bounds.size.width / 2.0 - widthOfSegment(index: 0) / 2.0,
                                                    bottom: 0,
-                                                   right: scrollView.bounds.size.width / 2.0 - widthOfSegment(index: count) / 2.0
-            )
+                                                   right: scrollView.bounds.size.width / 2.0 - widthOfSegment(index: count) / 2.0)
 
         case .edge: break
         }
@@ -950,7 +973,7 @@ open class TZSegmentedControl: UIControl {
 
     // MARK: - Touch Methods
 
-    open override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+    override open func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         let touch = touches.first
         guard let touchesLocation = touch?.location(in: self) else {
             assert(false, "Touch Location not found")
@@ -1054,9 +1077,9 @@ open class TZSegmentedControl: UIControl {
                 i += 1
             }
             rectForSelectedIndex = CGRect(x: offsetter, y: 0,
-                                          width: segmentWidthsArray[self.selectedSegmentIndex],
+                                          width: segmentWidthsArray[selectedSegmentIndex],
                                           height: frame.height)
-            selectedSegmentOffset = (frame.width / 2) - (segmentWidthsArray[self.selectedSegmentIndex] / 2)
+            selectedSegmentOffset = (frame.width / 2) - (segmentWidthsArray[selectedSegmentIndex] / 2)
         }
         rectForSelectedIndex.origin.x -= selectedSegmentOffset
         rectForSelectedIndex.size.width += selectedSegmentOffset * 2
@@ -1175,5 +1198,26 @@ extension Dictionary {
         for (k, v) in dict {
             updateValue(v as! Value, forKey: k as! Key)
         }
+    }
+}
+
+class CenteredVeritcalCATextLayer: CATextLayer {
+    override open func draw(in ctx: CGContext) {
+        let yDiff: CGFloat
+        let fontSize: CGFloat
+        let height = bounds.height
+
+        if let attributedString = string as? NSAttributedString {
+            fontSize = attributedString.size().height
+            yDiff = (height - fontSize) / 2
+        } else {
+            fontSize = self.fontSize
+            yDiff = (height - fontSize) / 2 - fontSize / 10
+        }
+
+        ctx.saveGState()
+        ctx.translateBy(x: 0.0, y: yDiff)
+        super.draw(in: ctx)
+        ctx.restoreGState()
     }
 }
