@@ -372,6 +372,24 @@ open class TZSegmentedControl: UIControl {
         }
         return size
     }
+    
+    private func measureBadgeAtIndex(index: Int) -> CGSize {
+        var badge: String?
+        if type == .flexibleTextImages {
+            if index >= sectionItems.count {
+                return CGSize.zero
+            }
+            badge = sectionItems[index].badge
+        }
+        
+        guard let text = badge else {
+            return CGSize.zero
+        }
+        
+        var size = (text as NSString).size(withAttributes: badgeTextAttributes)
+        
+        return size
+    }
 
     private func attributedTitleAtIndex(index: Int) -> NSAttributedString {
         var text: String?
@@ -600,10 +618,13 @@ open class TZSegmentedControl: UIControl {
 
                 let imageyOffset = CGFloat(roundf(Float(
                     ((frame.height - selectionIndicatorHeight) / 2) - imageHeight / 2)))
-
+                let badgeSize = measureBadgeAtIndex(index: index)
+                let badgeWidth = (badgeSize.width + 4) < stringHeight ? stringHeight : (badgeSize.width + 4)
+                let badgeHeight = (badgeSize.height + 4) < stringHeight ? stringHeight : (badgeSize.height + 4)
+                
                 let imageRect = CGRect(x: imagexOffset, y: imageyOffset, width: imageWidth, height: imageHeight)
                 var textRect = CGRect(x: textxOffset, y: yOffset, width: textWidth, height: stringHeight)
-                let badgeRect = CGRect(x: badgexOffset, y: yOffset, width: stringHeight, height: stringHeight)
+                let badgeRect = CGRect(x: badgexOffset, y: yOffset, width: badgeWidth , height: badgeHeight)
 
                 // Fix rect position/size to avoid blurry labels
                 textRect = CGRect(x: ceil(textRect.origin.x), y: ceil(textRect.origin.y), width: ceil(textRect.size.width), height: ceil(textRect.size.height))
