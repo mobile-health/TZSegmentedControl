@@ -251,6 +251,8 @@ open class TZSegmentedControl: UIControl {
         return scroll
     }()
 
+    internal var cachedBadge: String? = "0"
+
     // MARK: - Init Methods
 
     /// Initialiaze the segmented control with only titles.
@@ -660,10 +662,13 @@ open class TZSegmentedControl: UIControl {
                     badgeLayer.backgroundColor = badgeBackgroundColor.cgColor
                     badgeLayer.alignmentMode = .center
                     badgeLayer.contentsScale = UIScreen.main.scale
-                    
+
                     scrollView.layer.addSublayer(badgeLayer)
-                    
-                    badgeLayer.makePulsate()
+
+                    if cachedBadge != item.badge {
+                        badgeLayer.makePulsate()
+                        cachedBadge = item.badge
+                    }
                 }
 
                 scrollView.layer.addSublayer(titleLayer)
@@ -1251,6 +1256,6 @@ class CenteredVeritcalCATextLayer: CATextLayer {
         pulse.toValue = toValue
         pulse.repeatCount = 1
 
-        self.add(pulse, forKey: "pulse")
+        add(pulse, forKey: "pulse")
     }
 }
