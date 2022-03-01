@@ -359,7 +359,7 @@ open class TZSegmentedControl: UIControl {
 
         let selected = (index == selectedSegmentIndex)
         var size = CGSize.zero
-        if let titleFormatter = self.titleFormatter {
+        if let titleFormatter = titleFormatter {
             size = titleFormatter(self, title, index, selected).size()
         } else {
             var attributes: [NSAttributedString.Key: Any]
@@ -372,7 +372,7 @@ open class TZSegmentedControl: UIControl {
         }
         return size
     }
-    
+
     private func measureBadgeAtIndex(index: Int) -> CGSize {
         var badge: String?
         if type == .flexibleTextImages {
@@ -381,13 +381,13 @@ open class TZSegmentedControl: UIControl {
             }
             badge = sectionItems[index].badge
         }
-        
+
         guard let text = badge else {
             return CGSize.zero
         }
-        
+
         var size = (text as NSString).size(withAttributes: badgeTextAttributes)
-        
+
         return size
     }
 
@@ -410,7 +410,7 @@ open class TZSegmentedControl: UIControl {
 
         let selected = (index == selectedSegmentIndex)
         var str = NSAttributedString()
-        if let titleFormatter = self.titleFormatter {
+        if let titleFormatter = titleFormatter {
             str = titleFormatter(self, title, index, selected)
         } else {
             let attr = selected ? finalSelectedTitleAttributes() : finalTitleAttributes()
@@ -621,10 +621,10 @@ open class TZSegmentedControl: UIControl {
                 let badgeSize = measureBadgeAtIndex(index: index)
                 let badgeWidth = (badgeSize.width + 4) < stringHeight ? stringHeight : (badgeSize.width + 4)
                 let badgeHeight = (badgeSize.height + 4) < stringHeight ? stringHeight : (badgeSize.height + 4)
-                
+
                 let imageRect = CGRect(x: imagexOffset, y: imageyOffset, width: imageWidth, height: imageHeight)
                 var textRect = CGRect(x: textxOffset, y: yOffset, width: textWidth, height: stringHeight)
-                let badgeRect = CGRect(x: badgexOffset, y: yOffset, width: badgeWidth , height: badgeHeight)
+                let badgeRect = CGRect(x: badgexOffset, y: yOffset, width: badgeWidth, height: badgeHeight)
 
                 // Fix rect position/size to avoid blurry labels
                 textRect = CGRect(x: ceil(textRect.origin.x), y: ceil(textRect.origin.y), width: ceil(textRect.size.width), height: ceil(textRect.size.height))
@@ -660,8 +660,10 @@ open class TZSegmentedControl: UIControl {
                     badgeLayer.backgroundColor = badgeBackgroundColor.cgColor
                     badgeLayer.alignmentMode = .center
                     badgeLayer.contentsScale = UIScreen.main.scale
-
+                    
                     scrollView.layer.addSublayer(badgeLayer)
+                    
+                    badgeLayer.makePulsate()
                 }
 
                 scrollView.layer.addSublayer(titleLayer)
@@ -1240,5 +1242,15 @@ class CenteredVeritcalCATextLayer: CATextLayer {
         ctx.translateBy(x: 0.0, y: yDiff)
         super.draw(in: ctx)
         ctx.restoreGState()
+    }
+
+    func makePulsate(fromValue: Double = 2, toValue: Double = 1.0, duration: Double = 0.3) {
+        let pulse = CASpringAnimation(keyPath: "transform.scale")
+        pulse.duration = duration
+        pulse.fromValue = fromValue
+        pulse.toValue = toValue
+        pulse.repeatCount = 1
+
+        self.add(pulse, forKey: "pulse")
     }
 }
