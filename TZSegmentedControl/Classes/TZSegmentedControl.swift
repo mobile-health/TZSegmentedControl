@@ -740,7 +740,7 @@ open class TZSegmentedControl: UIControl {
             case .left:
                 borderRect = CGRect(x: 0, y: 0, width: borderWidth, height: rect.size.height)
             case .bottom:
-                borderRect = CGRect(x: 0, y: rect.size.height, width: rect.size.width, height: borderWidth)
+                borderRect = CGRect(x: 0, y: rect.size.height - borderWidth, width: rect.size.width, height: borderWidth)
             case .right:
                 borderRect = CGRect(x: 0, y: rect.size.width, width: borderWidth, height: rect.size.height)
             case .none:
